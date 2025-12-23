@@ -1,0 +1,97 @@
+suite_name: "Resaro Foundation Model Test - Suite"
+test_suite_default:
+  volumes:
+    cache: /Users/linus/resaro/asqi-engineer/.cache
+  systems_under_test:
+    - nova_lite
+test_suite:
+
+  - id: "inspect_mmlu_pro"
+    name: "MMLU-Pro (Massive Multitask Language Understanding - Inspect Eval)"
+    image: "asqiengineer/test-container:inspect_evals-latest"
+    params:
+      evaluation: "mmlu_pro"
+      evaluation_params: {}
+      limit: 5
+
+  - id: "inspect_bias"
+    name: "BBQ (Bias Benchmark for QA - Inspect Eval)"
+    image: "asqiengineer/test-container:inspect_evals-latest"
+    params:
+      evaluation: "bbq"
+      evaluation_params: {
+        shuffle: True
+      }
+      limit: 5
+
+  - id: "trustllm_privacy"
+    name: "Privacy Leakage (TrustLLM)"
+    image: "asqiengineer/test-container:trustllm-latest"
+    params:
+      test_type: privacy
+      datasets:
+        # - privacy_awareness_query
+        - privacy_leakage
+      max_rows: 5
+      output_dir: "trustllm_privacy"
+
+  - id: "trustllm_ood_detection"
+    name: "OOD Detection (Out of Distribution - TrustLLM)"
+    image: "asqiengineer/test-container:trustllm-latest"
+    params:
+      test_type: robustness
+      datasets:
+        - ood_detection
+      max_rows: 5
+      output_dir: "trustllm_ood_detection"
+
+  - id: "inspect_mgsm"
+    name: "MGSM (Multilingual Grade School Math - Inspect Eval)"
+    image: "asqiengineer/test-container:inspect_evals-latest"
+    params:
+      evaluation: "mgsm"
+      evaluation_params: {
+        languages: all,
+        shuffle: false,
+        limit_samples_per_lang: 10,
+      }
+      limit: 5
+
+  - id: "inspect_ifeval"
+    name: "IFEval (Instruction-Following Evaluation - Inspect Eval)"
+    image: "asqiengineer/test-container:inspect_evals-latest"
+    params:
+      evaluation: "ifeval"
+      evaluation_params: {}
+      limit: 5
+  
+  - id: "llmperf_token_benchmark"
+    name: "Token Benchmark (LLMPerf)"
+    image: "asqiengineer/test-container:llmperf-latest"
+    params:
+      max_num_completed_requests: 5
+
+  - id: "inspect_humaneval"
+    name: "HumanEval (Inspect Eval)"
+    image: "asqiengineer/test-container:inspect_evals-latest"
+    params:
+      evaluation: "humaneval"
+      evaluation_params: {}
+      limit: 5
+
+  - id: "garak_real_toxicity_prompts"
+    name: "RealToxicityPrompts (Garak)"
+    image: "asqiengineer/test-container:garak-latest"
+    params:
+      probes: ['realtoxicityprompts.RTPInsult'] 
+      # realtoxicityprompts.RTPProfanity', 'reapltoxicityprompts.RTPSexually_Explicit', 'realtoxicityprompts.RTPSevere_Toxicity
+      generations: 1
+      garak_log_filename: garak_output_dan.jsonl
+
+  - id: "inspect_bfcl"
+    name: "BFCL (Berkeley Function Calling Leaderboard - Inspect Eval)"
+    image: "asqiengineer/test-container:inspect_evals-latest"
+    params:
+      evaluation: "bfcl"
+      evaluation_params: {}
+      limit: 5

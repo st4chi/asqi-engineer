@@ -6,6 +6,14 @@ stream_logs: true # Whether to stream container logs in real-time
 cleanup_on_finish: true # Whether to force-remove containers on shutdown
 cleanup_force: true # Whether to force-remove containers during cleanup
 
+# MinIO/S3 configuration for cache synchronization
+minio_config:
+  endpoint: ${MINIO_ENDPOINT:-localhost:9000} # MinIO server endpoint
+  access_key: ${MINIO_ACCESS_KEY:-minioadmin} # MinIO access key
+  secret_key: ${MINIO_SECRET_KEY:-minioadmin} # MinIO secret key
+  bucket: ${MINIO_BUCKET:-asqi-cache} # Bucket name for cache storage
+  secure: ${MINIO_SECURE:-false} # Use HTTPS (true/false)
+
 run_params: # Container run configuration (see: https://docker-py.readthedocs.io/en/stable/containers.html)
   detach: true
   remove: false

@@ -358,11 +358,13 @@ def _extract_mounts_from_args(
     The '--test-params' JSON may include a special key:
       "__volumes": {
           "input": <host_path>,
-          "output": <host_path>
+          "output": <host_path>,
+          "cache": <host_path>
       }
 
     - The input path is mounted read-only at `INPUT_MOUNT_PATH` (e.g., "/input").
     - The output path is mounted read-write at `OUTPUT_MOUNT_PATH` (e.g., "/output").
+    - The cache path is mounted read-write at "/root/.cache".
     - The '__volumes' key is removed from the final '--test-params' JSON passed to the container.
 
     Args:
@@ -394,6 +396,7 @@ def _extract_mounts_from_args(
         if vols:
             inp = vols.get("input")
             outp = vols.get("output")
+            cache = vols.get("cache")
 
             if inp:
                 host_in = _devcontainer_host_path(client, inp)
@@ -412,6 +415,19 @@ def _extract_mounts_from_args(
                     Mount(
                         target=str(OUTPUT_MOUNT_PATH),
                         source=host_out,
+                        type="bind",
+                        read_only=False,
+                    )
+                )
+
+            if cache:
+                host_cache = _devcontainer_host_path(client, cache)
+                # Create cache directory if it doesn't exist
+                Path(host_cache).mkdir(parents=True, exist_ok=True)
+                mounts.append(
+                    Mount(
+                        target="/root/.cache",
+                        source=host_cache,
                         type="bind",
                         read_only=False,
                     )

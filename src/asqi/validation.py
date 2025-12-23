@@ -152,7 +152,7 @@ def get_duplicate_ids(all_ids: Dict[str, Any]) -> Dict[str, Any]:
 
 def validate_test_volumes(
     suite: SuiteConfig,
-    allowed_keys: tuple[str, ...] = ("input", "output"),
+    allowed_keys: tuple[str, ...] = ("input", "output", "cache"),
     require_at_least_one: bool = True,
 ) -> None:
     """
@@ -472,9 +472,22 @@ def create_test_execution_plan(
 
             if vols:
                 _params = dict(base_params or {})
-                _params["__volumes"] = vols  # reserved key
+
+                # Auto-append test_id to cache path if not already present
+                processed_vols = dict(vols)
+                if "cache" in processed_vols:
+                    from pathlib import Path
+
+                    cache_path = Path(processed_vols["cache"])
+                    test_id = getattr(test, "id", "")
+
+                    # If cache path doesn't end with test_id, append it
+                    if test_id and cache_path.name != test_id:
+                        processed_vols["cache"] = str(cache_path / test_id)
+
+                _params["__volumes"] = processed_vols  # reserved key
                 _params["volumes"] = (
-                    vols  # Also pass volumes directly for container access
+                    processed_vols  # Also pass volumes directly for container access
                 )
                 test_params = _params
             else:

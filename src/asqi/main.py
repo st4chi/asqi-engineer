@@ -674,6 +674,168 @@ def evaluate_score_cards(
         raise typer.Exit(1)
 
 
+@app.command(name="sync-cache")
+def sync_cache(
+    direction: str = typer.Option(
+        "both",
+        "--direction",
+        "-d",
+        help="Sync direction: 'upload', 'download', or 'both'",
+    ),
+    cache_path: Optional[str] = typer.Option(
+        None,
+        "--cache-path",
+        "-c",
+        help="Local cache directory path (default: .cache in current directory)",
+    ),
+    test_id: Optional[str] = typer.Option(
+        None,
+        "--test-id",
+        "-t",
+        help="Specific test ID to sync (default: sync all tests)",
+    ),
+    config_path: Optional[str] = typer.Option(
+        None,
+        "--config",
+        help="Path to docker_container.yaml config file",
+    ),
+    endpoint: Optional[str] = typer.Option(
+        None,
+        "--endpoint",
+        help="MinIO endpoint (overrides config)",
+    ),
+    access_key: Optional[str] = typer.Option(
+        None,
+        "--access-key",
+        help="MinIO access key (overrides config)",
+    ),
+    secret_key: Optional[str] = typer.Option(
+        None,
+        "--secret-key",
+        help="MinIO secret key (overrides config)",
+    ),
+    bucket: Optional[str] = typer.Option(
+        None,
+        "--bucket",
+        help="MinIO bucket name (overrides config)",
+    ),
+    force: bool = typer.Option(
+        False,
+        "--force",
+        "-f",
+        help="Force sync all files, ignoring cache metadata",
+    ),
+    prefer_local: bool = typer.Option(
+        False,
+        "--prefer-local",
+        help="Prefer local files in conflicts (default: prefer remote)",
+    ),
+):
+    """Synchronize local cache with MinIO/S3 storage.
+
+    Examples:
+        # Upload cache to MinIO
+        asqi sync-cache --direction upload
+
+        # Download cache from MinIO
+        asqi sync-cache --direction download
+
+        # Bidirectional sync (default)
+        asqi sync-cache
+
+        # Sync specific test cache
+        asqi sync-cache --test-id inspect_mmlu_pro
+
+        # Override MinIO configuration
+        asqi sync-cache --endpoint localhost:9000 --bucket my-cache
+    """
+    from pathlib import Path
+    from asqi.cache_sync import CacheSync, CacheSyncConfig
+
+    console.print("[blue]--- 🔄 Cache Synchronization ---[/blue]")
+
+    # Validate direction
+    valid_directions = ["upload", "download", "both"]
+    if direction not in valid_directions:
+        console.print(f"[red]❌ Invalid direction: {direction}[/red]")
+        console.print(f"[yellow]Valid options: {', '.join(valid_directions)}[/yellow]")
+        raise typer.Exit(1)
+
+    # Determine cache path
+    if cache_path:
+        local_cache_path = Path(cache_path)
+    else:
+        local_cache_path = Path.cwd() / ".cache"
+
+    if not local_cache_path.exists() and direction in ["upload", "both"]:
+        console.print(
+            f"[yellow]⚠️  Cache directory does not exist: {local_cache_path}[/yellow]"
+        )
+        console.print("[yellow]Creating cache directory...[/yellow]")
+        local_cache_path.mkdir(parents=True, exist_ok=True)
+
+    # Load MinIO configuration
+    try:
+        # Default config path
+        if not config_path:
+            config_path = "config/docker_container.yaml"
+
+        config_data = load_yaml_file(config_path)
+        minio_config_data = config_data.get("minio_config", {})
+
+        # Override with command-line arguments
+        sync_config = CacheSyncConfig(
+            endpoint=endpoint or minio_config_data.get("endpoint", "localhost:9000"),
+            access_key=access_key or minio_config_data.get("access_key", "minioadmin"),
+            secret_key=secret_key or minio_config_data.get("secret_key", "minioadmin"),
+            bucket=bucket or minio_config_data.get("bucket", "asqi-cache"),
+            secure=str(minio_config_data.get("secure", "false")).lower() == "true",
+        )
+
+        console.print(f"[green]✅ MinIO endpoint: {sync_config.endpoint}[/green]")
+        console.print(f"[green]✅ Bucket: {sync_config.bucket}[/green]")
+        console.print(f"[green]✅ Cache path: {local_cache_path}[/green]")
+        if test_id:
+            console.print(f"[green]✅ Test ID filter: {test_id}[/green]")
+
+    except (FileNotFoundError, ValueError, PermissionError) as e:
+        console.print(f"[red]❌ Configuration error: {e}[/red]")
+        raise typer.Exit(1)
+
+    # Initialize cache sync
+    try:
+        cache_sync = CacheSync(sync_config, local_cache_path)
+    except Exception as e:
+        console.print(f"[red]❌ Failed to initialize cache sync: {e}[/red]")
+        raise typer.Exit(1)
+
+    # Perform sync operation
+    try:
+        if direction == "upload":
+            console.print(f"[blue]⬆️  Uploading cache to {sync_config.bucket}...[/blue]")
+            count = cache_sync.upload(test_id=test_id, force=force)
+            console.print(f"[green]✅ Uploaded {count} files[/green]")
+
+        elif direction == "download":
+            console.print(
+                f"[blue]⬇️  Downloading cache from {sync_config.bucket}...[/blue]"
+            )
+            count = cache_sync.download(test_id=test_id, force=force)
+            console.print(f"[green]✅ Downloaded {count} files[/green]")
+
+        else:  # both
+            console.print(f"[blue]🔄 Syncing cache with {sync_config.bucket}...[/blue]")
+            result = cache_sync.sync(test_id=test_id, prefer_remote=not prefer_local)
+            console.print(f"[green]✅ Uploaded {result['uploaded']} files[/green]")
+            console.print(f"[green]✅ Downloaded {result['downloaded']} files[/green]")
+
+        console.print("[green]✨ Cache synchronization completed successfully![/green]")
+
+    except Exception as e:
+        console.print(f"[red]❌ Cache synchronization failed: {e}[/red]")
+        raise typer.Exit(1)
+
+
 # Expose the Click object for sphinx_click documentation
 typer_click_object = typer.main.get_command(app)
 
