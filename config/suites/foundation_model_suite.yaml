@@ -2,6 +2,8 @@ suite_name: "Resaro Foundation Model Test - Suite"
 test_suite_default:
   volumes:
     cache: /Users/linus/resaro/asqi-engineer/.cache
+  environment:
+    HF_HUB_OFFLINE: "1"
   systems_under_test:
     - nova_lite
 test_suite:

@@ -3,7 +3,7 @@ systems:
   openai_gpt4o_mini:
     type: "llm_api" # The llm_api type requires an openai compatible endpoint, we recommend using a proxy service like litellm
     params:
-      base_url: "http://localhost:4000/v1" # Use litellm on port 4000
+      base_url: "http://host.docker.internal:4000/v1" # Use litellm on port 4000
       model: "openai/gpt-4o-mini" # Uses litellm configured model
       api_key: "sk-1234" # API key configured in litellm proxy
       env_file: .env # Pass environment variables including HF_TOKEN
@@ -11,7 +11,7 @@ systems:
   openai_gpt4o:
     type: "llm_api"
     params:
-      base_url: "http://localhost:4000/v1" # Use litellm on port 4000
+      base_url: "http://host.docker.internal:4000/v1" # Use litellm on port 4000
       model: "openai/gpt-4o" # Uses litellm configured model
       api_key: "sk-1234" # API key configured in litellm proxy
       env_file: .env # Pass environment variables including HF_TOKEN
@@ -19,7 +19,7 @@ systems:
   nova_lite:
     type: "llm_api"
     params:
-      base_url: "http://localhost:4000" # Use litellm on port 4000
+      base_url: "http://host.docker.internal:4000" # Use litellm on port 4000
       model: "bedrock/arn:aws:bedrock:us-east-1:156772879641:inference-profile/us.amazon.nova-lite-v1:0" # Uses litellm configured model
       env_file: .env # Pass in all env variables from file
 
@@ -35,6 +35,6 @@ systems:
     type: "rag_api"
     description: "Custom RAG Chatbot"
     params:
-      base_url: "http://localhost:4000/v1"
+      base_url: "http://host.docker.internal:4000/v1"
       model: "custom_rag"
       api_key: "sk-1234"
